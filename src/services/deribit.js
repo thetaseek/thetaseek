@@ -12,6 +12,12 @@ const socket = new ReconnectingWebsocket(
   }
 );
 
+socket.addEventListener("message", (event) => {
+  const e = new CustomEvent("json");
+  e.data = transformReply(JSON.parse(event.data));
+  socket.dispatchEvent(e);
+});
+
 manageSession(socket, socket.refresh);
 
 // Manage subscriptions
@@ -31,12 +37,12 @@ socket.addEventListener("open", (event) => {
   );
 });
 
-socket.addEventListener("message", (event) => {
-  const message = JSON.parse(event.data);
+socket.addEventListener("json", (event) => {
+  const message = event.data;
   if (message.method === "subscription") {
     const {channel, data} = message.params;
     if (subscriptions[channel]) {
-      subscriptions[channel](transformReply(data));
+      subscriptions[channel](data);
     } else {
       console.log("Ignoring subscription: ", channel);
     }
@@ -49,16 +55,24 @@ export const subscriptionAdd = (channelArg, handler) => {
     subscriptions[channel] = isArray(handler) ? handler[i] : handler;
   });
 
-  socket.send(
-    JSON.stringify({
-      method: "public/subscribe",
-      params: {
-        channels,
-      },
-      jsonrpc: "2.0",
-      id: Date.now(),
-    })
-  );
+  const payload = JSON.stringify({
+    method: "public/subscribe",
+    params: {
+      channels,
+    },
+    jsonrpc: "2.0",
+    id: Date.now(),
+  });
+
+  // If connection is open send, otherwise wait for connection to open;
+  if (socket.readyState === 1) {
+    socket.send(payload);
+  } else {
+    // Connection opened
+    socket.addEventListener("open", () => socket.send(payload), {
+      once: true,
+    });
+  }
 };
 
 export const subscriptionRemove = (channelArg) => {
@@ -66,17 +80,24 @@ export const subscriptionRemove = (channelArg) => {
   channels.forEach((channel) => {
     delete channels[channel];
   });
+  const payload = JSON.stringify({
+    method: "public/unsubscribe",
+    params: {
+      channels,
+    },
+    jsonrpc: "2.0",
+    id: Date.now(),
+  });
 
-  socket.send(
-    JSON.stringify({
-      method: "public/unsubscribe",
-      params: {
-        channels,
-      },
-      jsonrpc: "2.0",
-      id: Date.now(),
-    })
-  );
+  // If connection is open send, otherwise wait for connection to open;
+  if (socket.readyState === 1) {
+    socket.send(payload);
+  } else {
+    // Connection opened
+    socket.addEventListener("open", () => socket.send(payload), {
+      once: true,
+    });
+  }
 };
 
 // Function to make a rpc call over ws. Will resolve with response
@@ -93,7 +114,7 @@ export const call = (request, {timeout = 10000} = {}) =>
     });
 
     function callback(event) {
-      const message = JSON.parse(event.data);
+      const message = event.data;
       if (message.id === id) {
         socket.removeEventListener("message", callback);
         clearTimeout(timer);
@@ -111,7 +132,7 @@ export const call = (request, {timeout = 10000} = {}) =>
       });
     }
 
-    socket.addEventListener("message", callback);
+    socket.addEventListener("json", callback);
   });
 
 export default socket;

@@ -64,12 +64,12 @@ export const manageSession = (ws, reconnect = () => {
   });
 
   // Listen for messages
-  ws.addEventListener("message", function (event) {
+  ws.addEventListener("json", function (event) {
     // Reset timer on new message
     resetTimer();
 
     // I must respond to test_request messages to keep connection alive
-    const message = JSON.parse(event.data);
+    const message = event.data;
     if (
       message.method === "heartbeat" &&
       message.params.type === "test_request"

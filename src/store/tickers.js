@@ -1,3 +1,4 @@
+import pick from "lodash/pick";
 import {createSlice} from "@reduxjs/toolkit";
 
 // Redux Toolkit allows us to write "mutating" logic in reducers. It
@@ -11,7 +12,19 @@ const slice = createSlice({
   },
   reducers: {
     update: (state, {payload}) => {
-      state.tickers[payload.instrumentName] = payload;
+      // Performance is to bad if i don't do this
+      state.tickers[payload.instrumentName] = pick(payload, [
+        "greeks.vega",
+        "greeks.theta",
+        "greeks.rho",
+        "greeks.gamma",
+        "greeks.delta",
+        "bestBidPrice",
+        "bestBidAmount",
+        "bestAskPrice",
+        "bestAskAmount",
+        "instrumentName",
+      ]);
     },
   },
 });
@@ -22,7 +35,7 @@ export const tickerSelectorFactory = (ticker) => (state) =>
   state.tickers.tickers[ticker] || {};
 
 export const selectors = {
-  instruments: (state) => state.instruments.instruments,
+  tickers: (state) => Object.values(state.tickers.tickers),
 };
 
 export default slice.reducer;

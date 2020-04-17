@@ -1,6 +1,6 @@
-import {createSlice} from "@reduxjs/toolkit";
+import orderBy from "lodash/orderBy";
+import {createSelector, createSlice} from "@reduxjs/toolkit";
 import {call} from "../services/deribit";
-import {transformReply} from "../services/deribit-utils";
 
 // Redux Toolkit allows us to write "mutating" logic in reducers. It
 // doesn't actually mutate the state because it uses the Immer library,
@@ -19,7 +19,7 @@ const slice = createSlice({
 });
 
 export const actions = {
-  request: () => (dispatch) => {
+  request: () => (dispatch) =>
     call({
       method: "public/get_instruments",
       params: {
@@ -29,13 +29,20 @@ export const actions = {
       },
     })
       .then((r) => r.result)
-      .then(transformReply)
-      .then((r) => dispatch(slice.actions.success(r)));
-  },
+      .then((r) => dispatch(slice.actions.success(r))),
 };
 
 export const selectors = {
-  instruments: (state) => state.instruments.instruments,
+  instrument: (state) => state.instruments.intstruments,
+  options: createSelector(
+    (state) => state.instruments.instruments,
+    (i) =>
+      orderBy(
+        i,
+        ["expirationTimestamp", "strike", "optionType"],
+        ["asc", "asc", "asc"]
+      ).slice(-10)
+  ),
 };
 
 export default slice.reducer;
