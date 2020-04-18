@@ -41,7 +41,7 @@ export const selectors = {
         i,
         ["expirationTimestamp", "strike", "optionType"],
         ["asc", "asc", "asc"]
-      ).slice(-10)
+      )//.slice(-10)
   ),
 };
 

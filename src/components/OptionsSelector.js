@@ -1,169 +1,181 @@
-import "react-tabulator/lib/css/tabulator.min.css";
-import "react-tabulator/lib/styles.css"; // required styles
 import React from "react";
-import cloneDeep from "lodash/cloneDeep";
-import map from "lodash/map";
-import {ReactTabulator} from "react-tabulator";
-import {useSelector, useDispatch} from "react-redux";
-import {
-  actions as tickers,
-  selectors as tickerSelectors,
-} from "../store/tickers";
-import {actions, selectors} from "../store/instruments";
-import {subscriptionAdd, subscriptionRemove} from "../services/deribit";
+import {connect} from "react-redux";
+import {AgGridReact} from "ag-grid-react";
 
-//custom max min header filter
-var minMaxFilterEditor = function (
-  cell,
-  onRendered,
-  success,
-  cancel,
-  editorParams
-) {
-  var end;
+import "ag-grid-community/dist/styles/ag-grid.css";
+import "ag-grid-community/dist/styles/ag-theme-balham.css";
 
-  var container = document.createElement("span");
+export class MinMaxFilter extends React.Component {
+  constructor(props) {
+    super(props);
 
-  //create and style inputs
-  var start = document.createElement("input");
-  start.setAttribute("type", "number");
-  start.setAttribute("placeholder", "Min");
-  // start.setAttribute("min", 0);
-  // start.setAttribute("max", 100);
-  start.style.padding = "4px";
-  start.style.width = "50%";
-  start.style.boxSizing = "border-box";
-
-  start.value = cell.getValue();
-
-  function buildValues() {
-    console.log({
-      start: start.value,
-      end: end.value,
-    });
-    success({
-      start: start.value,
-      end: end.value,
-    });
+    this.state = {
+      min: "",
+      max: "",
+    };
   }
 
-  function keypress(e) {
-    if (e.keyCode == 13) {
-      buildValues();
-    }
-
-    if (e.keyCode == 27) {
-      cancel();
-    }
-  }
-
-  end = start.cloneNode();
-  end.setAttribute("placeholder", "Max");
-
-  start.addEventListener("change", buildValues);
-  start.addEventListener("input", buildValues);
-  // start.addEventListener("blur", buildValues);
-  start.addEventListener("keydown", keypress);
-
-  end.addEventListener("change", buildValues);
-  // end.addEventListener("blur", buildValues);
-  end.addEventListener("keydown", keypress);
-
-  container.appendChild(start);
-  container.appendChild(end);
-
-  return container;
-};
-
-//custom max min filter function
-function minMaxFilterFunction(headerValue, rowValue, rowData, filterParams) {
-  //headerValue - the value of the header filter element
-  //rowValue - the value of the column in this row
-  //rowData - the data for the row being filtered
-  //filterParams - params object passed to the headerFilterFuncParams property
-
-  if (rowValue) {
-    if (headerValue.start !== "") {
-      if (headerValue.end !== "") {
-        return rowValue >= headerValue.start && rowValue <= headerValue.end;
-      } else {
-        return rowValue >= headerValue.start;
+  valueChanged = (event) => {
+    const that = this;
+    this.setState(
+      {
+        [event.target.name]: event.target.value,
+      },
+      () => {
+        this.props.parentFilterInstance(function (instance) {
+          const {min, max} = that.state;
+          if (min && max) {
+            return instance.setModel({
+              filterType: "number",
+              type: "inRange",
+              filter: min,
+              filterTo: max,
+            });
+          }
+          if (min) {
+            return instance.setModel({
+              filterType: "number",
+              type: "greaterThanOrEqual",
+              filter: min,
+            });
+          }
+          if (max) {
+            return instance.setModel({
+              filterType: "number",
+              type: "lessThanOrEqual",
+              filter: max,
+            });
+          }
+          return instance.setModel(null)
+        });
       }
-    } else {
-      if (headerValue.end !== "") {
-        return rowValue <= headerValue.end;
+    );
+  };
+
+  onParentModelChanged(parentModel) {
+    switch (parentModel.type || null) {
+      case "greaterThan":
+      case "greaterThanOrEqual": {
+        return this.setState({
+          min: parentModel.filter,
+        });
+      }
+      case "lessThan":
+      case "lessThanOrEqual": {
+        return this.setState({
+          max: parentModel.filter,
+        });
+      }
+      case "inRange": {
+        return this.setState({
+          min: parentModel.filter,
+          max: parentModel.filterTo,
+        });
+      }
+      default: {
+        return this.setState({
+          min: "",
+          max: "",
+        });
       }
     }
   }
 
-  return true; //must return a boolean, true if it passes the filter.
+  render() {
+    const style = {
+      width: "30%",
+      margin: "0 2px",
+      padding: "1px",
+      display: "flex",
+      alignItems: "center",
+    };
+    return (
+      <>
+        <div style={{height: "100%"}} className="ag-floating-filter-input">
+          <input
+            className="ag-input-field-input ag-text-field-input"
+            style={style}
+            type="number"
+            value={this.state.min}
+            name="min"
+            placeholder="MIN"
+            onChange={this.valueChanged}
+          />
+          <input
+            className="ag-input-field-input ag-text-field-input"
+            style={style}
+            type="number"
+            value={this.state.max}
+            name="max"
+            placeholder="MAX"
+            onChange={this.valueChanged}
+          />
+        </div>
+      </>
+    );
+  }
 }
 
-const columns = [
-  {
-    title: "Instrument",
-    field: "instrumentName",
-    headerFilter: "input",
-  },
-  {
-    title: "Delta",
-    field: "greeks.delta",
-    // headerFilter: minMaxFilterEditor,
-    // headerFilterFunc: (...args) => {
-    //   const resp = minMaxFilterFunction(...args);
-    //   console.log(resp);
-    //   return resp;
-    // },
-    hozAlign: "right",
-  },
-  {
-    title: "Gamma",
-    field: "greeks.gamma",
-    // headerFilter: minMaxFilterEditor,
-    // headerFilterFunc: minMaxFilterFunction,
-    hozAlign: "right",
-  },
-  {
-    title: "Vega",
-    field: "greeks.vega",
-    // headerFilter: minMaxFilterEditor,
-    // headerFilterFunc: minMaxFilterFunction,
-    hozAlign: "right",
-  },
-  {
-    title: "Theta",
-    field: "greeks.theta",
-    // headerFilter: minMaxFilterEditor,
-    // headerFilterFunc: minMaxFilterFunction,
-    hozAlign: "right",
-  },
-];
+export function OptionsSelector({options}) {
+  const columnDefs = [
+    {
+      headerName: "Instrument",
+      field: "instrumentName",
+      sortable: true,
+      filter: true,
+    },
+    ...[
+      {headerName: "Delta", field: "greeks.delta"},
+      {headerName: "Gamma", field: "greeks.gamma"},
+      {headerName: "Vega", field: "greeks.vega"},
+      {headerName: "Theta", field: "greeks.theta"},
+    ].map((x) =>
+      Object.assign(x, {
+        sortable: true,
+        filter: "agNumberColumnFilter",
+        floatingFilterComponent: "customNumberMinMaxFilter",
+        filterParams: {
+          debounceMs: 200,
+        },
+      })
+    ),
+  ];
 
-export function OptionsSelector() {
-  const dispatch = useDispatch();
-  const instruments = useSelector(selectors.options);
-
-  React.useEffect(() => {
-    dispatch(actions.request());
-  }, [dispatch]);
-
-  const options = useSelector(tickerSelectors.tickers);
-
-  React.useEffect(() => {
-    if (instruments.length > 0) {
-      console.log("Subscribing to instruments");
-      const channels = instruments.map((x) => `ticker.${x.instrumentName}.100ms`);
-      subscriptionAdd(channels, (d) => dispatch(tickers.update(d)));
-      return () => subscriptionRemove(channels);
-    }
-    return () => {
-    };
-  }, [dispatch, instruments]);
-
-
+  const rowData = Object.values(options);
+  const onGridReady = (params) => {
+    console.log("Grid Ready", params);
+  };
   return (
-    <div>
-      <ReactTabulator columns={columns} data={cloneDeep(options)}/>
+    <div
+      className="ag-theme-balham"
+      style={{
+        height: "500px",
+        width: "80vw",
+      }}
+    >
+      <AgGridReact
+        onGridReady={onGridReady}
+        floatingFilter
+        columnDefs={columnDefs}
+        rowData={rowData}
+        // enable delta updates for redux
+        deltaRowDataMode={true}
+        getRowNodeId={(data) => data.instrumentName}
+        frameworkComponents={{
+          customNumberMinMaxFilter: MinMaxFilter,
+        }}
+      />
     </div>
   );
 }
+
+export default connect(
+  (state) => {
+    return {
+      options: state.tickers.tickers,
+    };
+  },
+  null,
+  null,
+  {forwardRef: true} // must be supplied for react/redux when using AgGridReact
+)(OptionsSelector);
