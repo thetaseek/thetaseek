@@ -141,6 +141,7 @@ export function OptionsSelector({options, instruments}) {
     },
     {
       field: "markPrice",
+      filter: "agNumberColumnFilter",
       headerName: "Mark Price",
       type: "numericColumn",
       valueFormatter: (params) =>
@@ -150,6 +151,7 @@ export function OptionsSelector({options, instruments}) {
     },
     {
       field: "markIv",
+      filter: "agNumberColumnFilter",
       headerName: "IV (Mark)",
       type: "numericColumn",
       valueFormatter: (params) => `${params.value.toFixed(2)}`,
@@ -176,7 +178,7 @@ export function OptionsSelector({options, instruments}) {
   }));
 
   const onGridReady = (params) => {
-    console.log("Grid Ready", params);
+    // console.log("Grid Ready", params);
     params.api.sizeColumnsToFit();
   };
 
