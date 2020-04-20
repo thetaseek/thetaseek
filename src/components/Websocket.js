@@ -39,7 +39,7 @@ export function Websocket() {
   };
 
   return (
-    <div style={{marginLeft: '4px', marginBottom: "4px"}}>
+    <div style={{marginLeft: "4px", marginBottom: "4px"}}>
       <span style={style}/>
       {isOpen ? "Online" : "Connecting..."}
     </div>
