@@ -14,7 +14,7 @@
 importScripts("https://storage.googleapis.com/workbox-cdn/releases/4.3.1/workbox-sw.js");
 
 importScripts(
-  "/thetaseek/precache-manifest.32f1dd2fbe2e47a3db3a9b9af59739cd.js"
+  "/thetaseek/precache-manifest.886f997826f55b1df951f521c667721f.js"
 );
 
 self.addEventListener('message', (event) => {
