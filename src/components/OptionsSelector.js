@@ -1,9 +1,12 @@
 import React from "react";
+import map from "lodash/map";
 import {connect} from "react-redux";
 import {AgGridReact} from "ag-grid-react";
 
 import "ag-grid-community/dist/styles/ag-grid.css";
-import "ag-grid-community/dist/styles/ag-theme-balham.css";
+import "ag-grid-community/dist/styles/ag-theme-balham-dark.css";
+// Override ag-grid theme
+import "./OptionsSelector.css";
 
 export class MinMaxFilter extends React.Component {
   constructor(props) {
@@ -46,14 +49,14 @@ export class MinMaxFilter extends React.Component {
               filter: max,
             });
           }
-          return instance.setModel(null)
+          return instance.setModel(null);
         });
       }
     );
   };
 
   onParentModelChanged(parentModel) {
-    switch (parentModel.type || null) {
+    switch (parentModel ? parentModel.type : null) {
       case "greaterThan":
       case "greaterThanOrEqual": {
         return this.setState({
@@ -116,13 +119,40 @@ export class MinMaxFilter extends React.Component {
   }
 }
 
-export function OptionsSelector({options}) {
+export function OptionsSelector({options, instruments}) {
   const columnDefs = [
     {
-      headerName: "Instrument",
       field: "instrumentName",
-      sortable: true,
-      filter: true,
+      headerName: "Instrument",
+      comparator: (valueA, valueB, nodeA, nodeB, isInverted) => {
+        if (nodeA.data.expirationTimestamp !== nodeB.data.expirationTimestamp) {
+          return (
+            nodeA.data.expirationTimestamp - nodeB.data.expirationTimestamp
+          );
+        }
+
+        if (nodeA.data.strike !== nodeB.data.strike) {
+          return nodeA.data.strike - nodeB.data.strike;
+        }
+
+        //https://stackoverflow.com/questions/51165/how-to-sort-strings-in-javascript
+        return nodeA.data.optionType.localeCompare(nodeB.data.optionType);
+      },
+    },
+    {
+      field: "markPrice",
+      headerName: "Mark Price",
+      type: "numericColumn",
+      valueFormatter: (params) =>
+        `$${(params.value * params.data.underlyingPrice).toFixed(
+          2
+        )} (${params.value.toFixed(8)})`,
+    },
+    {
+      field: "markIv",
+      headerName: "IV (Mark)",
+      type: "numericColumn",
+      valueFormatter: (params) => `${params.value.toFixed(2)}`,
     },
     ...[
       {headerName: "Delta", field: "greeks.delta"},
@@ -131,40 +161,52 @@ export function OptionsSelector({options}) {
       {headerName: "Theta", field: "greeks.theta"},
     ].map((x) =>
       Object.assign(x, {
-        sortable: true,
         filter: "agNumberColumnFilter",
         floatingFilterComponent: "customNumberMinMaxFilter",
-        filterParams: {
-          debounceMs: 200,
-        },
+        floatingFilterComponentParams: {suppressFilterButton: true},
+        type: "numericColumn",
+        valueFormatter: (params) => `${params.value.toFixed(5)}`,
       })
     ),
   ];
 
-  const rowData = Object.values(options);
+  const rowData = map(options, (values, instrumentName) => ({
+    ...instruments[instrumentName],
+    ...values,
+  }));
+
   const onGridReady = (params) => {
     console.log("Grid Ready", params);
+    params.api.sizeColumnsToFit();
   };
+
   return (
-    <div
-      className="ag-theme-balham"
-      style={{
-        height: "500px",
-        width: "80vw",
-      }}
-    >
-      <AgGridReact
-        onGridReady={onGridReady}
-        floatingFilter
-        columnDefs={columnDefs}
-        rowData={rowData}
-        // enable delta updates for redux
-        deltaRowDataMode={true}
-        getRowNodeId={(data) => data.instrumentName}
-        frameworkComponents={{
-          customNumberMinMaxFilter: MinMaxFilter,
+    <div id="grid-wrapper">
+      <div
+        className="ag-theme-balham-dark"
+        style={{
+          height: "95vh",
+          width: "100%",
         }}
-      />
+      >
+        <AgGridReact
+          onGridReady={onGridReady}
+          floatingFilter
+          columnDefs={columnDefs}
+          defaultColDef={{
+            filter: true,
+            resizable: true,
+            sortable: true,
+          }}
+          rowData={rowData}
+          // enable delta updates for redux
+          deltaRowDataMode={true}
+          getRowNodeId={(data) => data.instrumentName}
+          frameworkComponents={{
+            customNumberMinMaxFilter: MinMaxFilter,
+          }}
+        />
+      </div>
     </div>
   );
 }
@@ -173,6 +215,7 @@ export default connect(
   (state) => {
     return {
       options: state.tickers.tickers,
+      instruments: state.instruments.instruments,
     };
   },
   null,

@@ -29,5 +29,19 @@ export function Websocket() {
     };
   }, [dispatch]);
   const isOpen = useSelector(selectors.isOpen);
-  return <div>Connection Status: {isOpen ? "Open" : "Closed"}</div>;
+  const style = {
+    backgroundColor: isOpen ? "#7aae1a" : "#ff1111",
+    borderRadius: "50%",
+    marginRight: "8px",
+    display: "inline-block",
+    height: "12px",
+    width: "12px",
+  };
+
+  return (
+    <div style={{marginLeft: '4px', marginBottom: "4px"}}>
+      <span style={style}/>
+      {isOpen ? "Online" : "Connecting..."}
+    </div>
+  );
 }

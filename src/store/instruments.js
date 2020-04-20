@@ -1,5 +1,6 @@
 import orderBy from "lodash/orderBy";
-import {createSelector, createSlice} from "@reduxjs/toolkit";
+import keyBy from "lodash/keyBy";
+import {createSlice} from "@reduxjs/toolkit";
 import {call} from "../services/deribit";
 
 // Redux Toolkit allows us to write "mutating" logic in reducers. It
@@ -9,7 +10,7 @@ import {call} from "../services/deribit";
 const slice = createSlice({
   name: "instruments",
   initialState: {
-    instruments: [],
+    instruments: {},
   },
   reducers: {
     success: (state, {payload}) => {
@@ -29,20 +30,20 @@ export const actions = {
       },
     })
       .then((r) => r.result)
+      .then((r) =>
+        orderBy(
+          r,
+          ["expirationTimestamp", "strike", "optionType"],
+          ["asc", "asc", "asc"]
+        )
+      )
+      .then((r) => keyBy(r, "instrumentName"))
       .then((r) => dispatch(slice.actions.success(r))),
 };
 
 export const selectors = {
-  instrument: (state) => state.instruments.intstruments,
-  options: createSelector(
-    (state) => state.instruments.instruments,
-    (i) =>
-      orderBy(
-        i,
-        ["expirationTimestamp", "strike", "optionType"],
-        ["asc", "asc", "asc"]
-      )//.slice(-10)
-  ),
+  instrument: (state) => state.instruments.instruments,
+  options: (state) => state.instruments.instruments,
 };
 
 export default slice.reducer;

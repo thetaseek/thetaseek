@@ -12,19 +12,7 @@ const slice = createSlice({
   },
   reducers: {
     update: (state, {payload}) => {
-      // Performance is to bad if i don't do this
-      state.tickers[payload.instrumentName] = pick(payload, [
-        "greeks.vega",
-        "greeks.theta",
-        "greeks.rho",
-        "greeks.gamma",
-        "greeks.delta",
-        "bestBidPrice",
-        "bestBidAmount",
-        "bestAskPrice",
-        "bestAskAmount",
-        "instrumentName",
-      ]);
+      state.tickers[payload.instrumentName] = payload;
     },
   },
 });

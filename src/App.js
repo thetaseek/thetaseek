@@ -1,13 +1,14 @@
 import React from "react";
-import "./App.css";
-import {Websocket} from "./components/Websocket";
-import {OptionsTable} from "./components/OptionsTable";
-import OptionsSelector from "./components/OptionsSelector";
-import {MarkPrice} from "./components/MarkPrice";
+import isEmpty from "lodash/isEmpty";
+import map from "lodash/map";
 import {useDispatch, useSelector} from "react-redux";
+
+import "./App.css";
+import OptionsSelector from "./components/OptionsSelector";
+import {Websocket} from "./components/Websocket";
+import {actions as tickers} from "./store/tickers";
 import {actions, selectors} from "./store/instruments";
 import {subscriptionAdd, subscriptionRemove} from "./services/deribit";
-import {actions as tickers} from "./store/tickers";
 
 function App() {
   const dispatch = useDispatch();
@@ -17,11 +18,10 @@ function App() {
     dispatch(actions.request());
   }, [dispatch]);
 
-
   React.useEffect(() => {
-    if (instruments.length > 0) {
-      console.log("Subscribing to instruments");
-      const channels = instruments.map(
+    if (!isEmpty(instruments)) {
+      const channels = map(
+        instruments,
         (x) => `ticker.${x.instrumentName}.100ms`
       );
       subscriptionAdd(channels, (d) => dispatch(tickers.update(d)));
@@ -33,12 +33,10 @@ function App() {
 
   return (
     <div className="App">
-      <header className="App-header">
+      <div style={{textAlign: "left"}}>
         <Websocket/>
-        {/*<MarkPrice/>*/}
-        {/*<OptionsTable/>*/}
-        <OptionsSelector/>
-      </header>
+      </div>
+      <OptionsSelector/>
     </div>
   );
 }

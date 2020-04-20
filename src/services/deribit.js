@@ -3,14 +3,14 @@ import isArray from "lodash/isArray";
 import ReconnectingWebsocket from "./reconnecting-websocket";
 import {manageSession, transformReply} from "./deribit-utils";
 
-const socket = new ReconnectingWebsocket(
-  // "wss://www.deribit.com/ws/api/v2",
-  "wss://test.deribit.com/ws/api/v2",
-  null,
-  {
-    automaticOpen: false,
-  }
-);
+const url =
+  process.env.NODE_ENV === "production"
+    ? "wss://www.deribit.com/ws/api/v2"
+    : "wss://test.deribit.com/ws/api/v2";
+
+const socket = new ReconnectingWebsocket(url, null, {
+  automaticOpen: false,
+});
 
 socket.addEventListener("message", (event) => {
   const e = new CustomEvent("json");
